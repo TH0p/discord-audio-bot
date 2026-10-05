@@ -43,6 +43,10 @@ intents.members = True       # necessário para saber quem entrou
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# Controla quais servidores (guilds) já estão com o bot tocando áudio agora,
+# pra evitar processar o mesmo evento duas vezes (bug de entrada duplicada)
+guilds_tocando = set()
+
 
 @bot.event
 async def on_ready():
@@ -70,6 +74,14 @@ async def on_voice_state_update(member, before, after):
         return
 
     canal_de_voz = after.channel
+    guild_id = member.guild.id
+
+    # Se já está processando uma entrada nesse servidor, ignora o evento duplicado
+    if guild_id in guilds_tocando:
+        print("[DEBUG] Já estou processando uma entrada nesse servidor, ignorando evento duplicado.")
+        return
+
+    guilds_tocando.add(guild_id)
     print(f"[DEBUG] Tentando entrar no canal: {canal_de_voz}")
 
     try:
@@ -97,6 +109,9 @@ async def on_voice_state_update(member, before, after):
     except Exception as e:
         print(f"[DEBUG] Tipo do erro: {type(e).__name__}")
         print(f"Erro ao tocar áudio: {repr(e)}")
+
+    finally:
+        guilds_tocando.discard(guild_id)
 
 
 bot.run(TOKEN)
